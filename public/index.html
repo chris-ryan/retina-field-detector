@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OpenCV.js - Retinal Image Field Detection</title>
+</head>
+<body>
+  <h2>Basic Retinal Image Analysis using OpenCV.js</h2>
+  <p id="status">OpenCV.js is loading...</p>
+  <div>
+    <div class="inputoutput">
+      <img id="imageSrc" alt="No Image" />
+      <div class="caption">imageSrc <input type="file" id="fileInput" name="file" /></div>
+    </div>
+    <div class="inputoutput">
+      <canvas id="canvasOutput" ></canvas>
+      <div class="caption">canvasOutput</div>
+    </div>
+  </div>
+  <script type="text/javascript">
+    let imgElement = document.getElementById("imageSrc");
+    let inputElement = document.getElementById("fileInput");
+    inputElement.addEventListener("change", (e) => {
+      imgElement.src = URL.createObjectURL(e.target.files[0]);
+    }, false);
+    imgElement.onload = function() {
+      let src = cv.imread(imgElement);
+      let dst = cv.Mat.zeros(src.rows, src.cols, cv.CV_8U);
+      let opticDisc = new cv.Mat();
+      let color = new cv.Scalar(255, 0, 0);
+      cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+      cv.HoughCircles(src, opticDisc, cv.HOUGH_GRADIENT, 1, 45, 75, 40, 0, 0);
+      // highlight disc
+      for (let i = 0; i < opticDisc.cols; ++i) {
+        let x = opticDisc.data32F[i * 3];
+        let y = opticDisc.data32F[i * 3 + 1];
+        let radius = opticDisc.data32F[i * 3 + 2];
+        let center = new cv.Point(x, y);
+        cv.circle(dst, center, radius, color);
+      }
+      cv.imshow('canvasOutput', dst);
+      // free up Emscripten memory
+      src.delete(); dst.delete(); opticDisc.delete();
+    };
+    function onOpenCvReady() {
+      document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
+    }
+  </script>
+  <script async src="opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+</body>
+</html>
