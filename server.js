@@ -1,3 +1,4 @@
+// a basic express app for serving the html & js
 const express = require('express');
 const app = express();
 
