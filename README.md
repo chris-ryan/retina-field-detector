@@ -1,18 +1,17 @@
 # Retinal Field Detector
 
-an OpenCV.js-based retinal image analyzer.
+a WebAssembly/OpenCV.js based retinal image analyzer.
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
 ### Prerequisites
 
 What things you need to install the software and how to install them
 
-```
-Give examples
-```
+* node (tested to work with Node 8 LTS (8.9.1))
+
 
 ### Installing
 
@@ -30,6 +29,7 @@ node server.js
 ```
 
 and go to http://localhost:3000 in your browser.
+> NOTE: WebAssembly performance is best on Firefox at time of last submit
 
 The top displays the input image, the botton, the transformed output with detection overlay.
 
