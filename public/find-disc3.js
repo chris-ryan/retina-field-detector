@@ -1,81 +1,60 @@
 let runOpenCV = function() {
   document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
-  // define Hough Circle parameters
-  const hough = {
-    inv_ratio: 1,         // The inverse ratio of resolution
-    min_dist: 100,        // Minimum distance between detected centers
-    edge_threshold: 60,   // Upper threshold for the internal Canny edge detector (the lower the number the less fussy)
-    center_threshold: 40, // Threshold for center detection
-    min_radius: 40,       // Minimum radius to be detected
-    max_radius: 160       // Maximum radius to be detected
-  }
+
+  let findFirstDisc = (dst, minRadius, maxRadius) => {
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+    const contourCount = contours.size();
+    for (let i=0; i<contourCount; i++) {
+      let contour = contours.get(i);
+      let circle = cv.minEnclosingCircle(contour);
+      if (circle.radius >= minRadius && circle.radius <= maxRadius) return circle;
+      contour.delete();
+    }
+    contours.delete(); hierarchy.delete();
+  } 
 
   let imgElement = new Image();
   imgElement.src = 'ODR1.jpg';
   imgElement.onload = function() {
     let src = cv.imread(imgElement);
+    console.log(`loaded image:
+    height: ${src.rows} pixels
+    width: ${src.cols} pixels`);
     // Colour-transform the image for maximum disc-retina contrast (get the R channel)
     let rgbaPlanes = new cv.MatVector();
     cv.split(src, rgbaPlanes);
     let R = rgbaPlanes.get(0);
-    // let dst = R.clone();
-    // get only the brighter pixels
-    let dst = new cv.Mat();
-    cv.threshold(R, dst, 190, 200, cv.THRESH_BINARY); 
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    let output = cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC3);
-    let color = new cv.Scalar(0, 255, 0);  // the colour of the circle to be drawn
-    cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-    console.log(contours.size());
-    const contourCount = contours.size();
-    for (let i=0; i<contourCount; i++) {
-      // let result = cv.matchShapes(contours.get(i), contours.get(i+5), 1, 0);
-      let contour = contours.get(i);
-      let hull = new cv.Mat();
-      let defect = new cv.Mat();
-      cv.convexHull(contour, hull, false, false);
-      cv.convexityDefects(contour, hull, defect);
-      for (let i = 0; i < defect.rows; ++i) {
-        let start = new cv.Point(contour.data32S[defect.data32S[i * 4] * 2],
-                                contour.data32S[defect.data32S[i * 4] * 2 + 1]);
-        let end = new cv.Point(contour.data32S[defect.data32S[i * 4 + 1] * 2],
-                              contour.data32S[defect.data32S[i * 4 + 1] * 2 + 1]);
-        let far = new cv.Point(contour.data32S[defect.data32S[i * 4 + 2] * 2],
-                              contour.data32S[defect.data32S[i * 4 + 2] * 2 + 1]);
-        cv.line(src, start, end, color, 2, cv.LINE_AA, 0);
-        // cv.circle(output, far, 3, color, -1);
-      }
-      contour.delete(); hull.delete(); defect.delete();
-      // cv.drawContours(output, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
+    let retina = new cv.Mat();
+  // Crop image to retina border (must be at least 1/2 of the supplied image width)
+    cv.threshold(R, retina, 10, 200, cv.THRESH_BINARY);
+    let retinalROI = findFirstDisc(retina, src.cols/4, src.cols);
+    if (retinalROI !== undefined){
+      console.log(`center of retinal image: x:${retinalROI.center.x}, y:${retinalROI.center.y}`);
+      let rectROI = new cv.Rect(retinalROI.center.x-retinalROI.radius, retinalROI.center.y-retinalROI.radius, retinalROI.radius*2, retinalROI.radius*2);
+      src = src.roi(rectROI);
+      R = R.roi(rectROI);
     }
-    
-    
-    
-    
-    // cv.drawContours(output, contours, -1, color, 1, cv.LINE_8, hierarchy, 100);
-    // for (let i = 0; i < contours.size(); ++i) {
-    //   console.log(cv.contourArea(contours[i]))
-    // }
-    let opticDisc = new cv.Mat();
-    // (x,y),radius = cv.minEnclosingCircle(contours[i])
-    // center = (int(x),int(y))
-    // radius = int(radius)
-    // cv.circle(img,center,radius,(0,255,0),2)
-
-    // cv.HoughCircles(output, opticDisc, cv.HOUGH_GRADIENT, hough.inv_ratio, hough.min_dist, hough.edge_threshold, hough.center_threshold, hough.min_radius, hough.max_radius);
-    // highlight disc
-    // for (let i = 0; i < opticDisc.cols; ++i) {
-    //   console.log('drawing circle');
-    //   let x = opticDisc.data32F[i * 3];
-    //   let y = opticDisc.data32F[i * 3 + 1];
-    //   let radius = opticDisc.data32F[i * 3 + 2];
-    //   let center = new cv.Point(x, y);
-    //   cv.circle(output, center, radius, color, 2);
-    // }
+  // Locate the optic disc
+    console.log(`cropped image:
+    height: ${src.rows} pixels
+    width: ${src.cols} pixels`);
+    cv.threshold(R, retina, 190, 200, cv.THRESH_BINARY);
+    // erode the result
+    let kernel = cv.Mat.ones(8, 8, cv.CV_8U);
+    let color = new cv.Scalar(255, 0, 0); // red
+    // erode x 4, dilate x 2
+    cv.erode(retina, retina, kernel, {x: -1, y: -1}, 2, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());  // x: -1, y: -1 refers to the elements center
+    cv.morphologyEx(retina, retina, cv.MORPH_OPEN, kernel, {x: -1, y: -1}, 2, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+    let opticDisc = findFirstDisc(retina, src.cols/30, src.cols/10.4);
+    if (opticDisc !== undefined){
+      console.log(`center of optic disc: x:${opticDisc.center.x}, y:${opticDisc.center.y}`);
+      cv.circle(src, opticDisc.center, opticDisc.radius, color);
+    }
     cv.imshow('canvasOutput', src);
     // free up Emscripten memory
-    src.delete(); dst.delete(); R.delete(); opticDisc.delete(); output.delete(); contours.delete();
+    src.delete(); R.delete(); retina.delete();
   };
   let imgContainer = document.getElementById('imageContainer').appendChild(imgElement);
 }
