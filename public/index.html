@@ -3,10 +3,19 @@
 <head>
   <meta charset="utf-8">
   <title>OpenCV.js - Retinal Image Field Detection</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-  <h2>Basic Retinal Image Analysis using OpenCV.js</h2>
+  <h1>Diabetic Retinopathy CRE</h1>
+  <h2>In-browser Retinal Image Analysis using OpenCV and WebAssembly</h2>
   <p id="status">loading OpenCV.js...</p>
+  <div id="drop-area">
+    <form class="my-form">
+      <p>Open a retinal image file with the file dialog or by dragging and dropping onto the dashed region</p>
+      <input type="file" id="fileElem" multiple accept="image/*" onchange="handleFiles(this.files)">
+      <label class="button" for="fileElem">Select a file</label>
+    </form>
+  </div>
   <div>
     <div class="inputoutput" id="imageContainer">
       <!--<img id="imageSrc" alt="No Image" />-->
@@ -20,6 +29,7 @@
       <div class="caption">canvasOutput</div>
     </div>
   </div>
+  <script src="drag-and-drop.js" type="text/javascript"></script>
   <script src="analyze.js" type="text/javascript"></script>
   <!--<script src="lib/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>-->
 </body>
